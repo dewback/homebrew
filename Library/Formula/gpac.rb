@@ -21,11 +21,14 @@ class Gpac < Formula
   def install
     ENV.deparallelize
     system "chmod +x configure"
-    system "./configure", "--disable-wx", "--use-ffmpeg=no",
+    system "./configure", "--disable-wx",
+                          "--use-ffmpeg=no",
                           "--prefix=#{prefix}",
                           "--mandir=#{man}",
                           # Force detection of X libs on 64-bit kernel
-                          "--extra-ldflags=-L/usr/X11/lib"
+                          "--extra-ldflags=-L/usr/X11/lib",
+                          "--cc=/usr/bin/gcc",
+                          "--cpp=/usr/bin/g++"
     system "make"
     system "make install"
   end

@@ -2,8 +2,9 @@ require 'formula'
 
 class Openvpn < Formula
   homepage 'http://openvpn.net/'
-  url 'http://build.openvpn.net/downloads/releases/openvpn-2.2.0.tar.gz'
-  sha256 '71ebeaaba1641e6d1454ae0f10f986002e5c6afdcd09da659122e3e5c74a2567'
+  url 'http://build.openvpn.net/downloads/releases/openvpn-2.2.1.tar.gz'
+  head 'git://openvpn.git.sourceforge.net/gitroot/openvpn/openvpn.git'
+  sha256 'a860858cc92d4573399bb2ff17ac62d9b4b8939e6af0b8cc69150ba39d6e94e0'
 
   depends_on 'lzo' => :recommended
 
@@ -12,6 +13,7 @@ class Openvpn < Formula
 
   def install
     # Build and install binary
+    system " autoreconf -vi" if ARGV.build_head?
     system "./configure", "--prefix=#{prefix}", "--disable-debug", "--disable-dependency-tracking"
     system "make install"
 
