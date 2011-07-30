@@ -19,7 +19,6 @@ class Openvpn < Formula
 
   def install
     # Build and install binary
-    system " autoreconf -vi" if ARGV.build_head?
     system "./configure", "--prefix=#{prefix}", "--disable-debug", "--disable-dependency-tracking"
     system "make install"
 
