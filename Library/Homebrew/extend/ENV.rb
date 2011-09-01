@@ -21,10 +21,6 @@ module HomebrewEnvExtension
     # llvm allows -O4 however it often fails to link and is very slow
     cflags = ['-O3']
 
-    # If these aren't set, many formulae fail to build
-    self['CC'] = '/usr/bin/cc'
-    self['CXX'] = '/usr/bin/c++'
-
     case self.compiler
       when :clang then self.clang
       when :llvm then self.llvm
@@ -127,6 +123,10 @@ module HomebrewEnvExtension
     if MacOS.xcode_version < '4'
       self['CC'] = '/usr/bin/cc'
       self['CXX'] = '/usr/bin/c++'
+    elsif MacOS.xcode_version >= '4.2'
+      # Apple stopped adding the -4.2 suffixes
+      self['CC']  = "#{MacOS.xcode_prefix}/usr/bin/gcc"
+      self['CXX']  = "#{MacOS.xcode_prefix}/usr/bin/g++"
     else
       # With Xcode4 cc, c++, gcc and g++ are actually symlinks to llvm-gcc
       self['CC']  = "#{MacOS.xcode_prefix}/usr/bin/gcc-4.2"
@@ -317,24 +317,22 @@ Please take one of the following actions:
     # if the user has set something that is tested here
 
     # test for --flags first so that installs can be overridden on a per
-    # install basis
+    # install basis. Then test for ENVs in inverse order to flags, this is
+    # sensible, trust me
     if ARGV.include? '--use-gcc'
       :gcc
     elsif ARGV.include? '--use-llvm'
       :llvm
     elsif ARGV.include? '--use-clang'
       :clang
-    end
-
-    # test for ENVs in inverse order to flags, this is sensible, trust me
-    if self['HOMEBREW_USE_CLANG']
+    elsif self['HOMEBREW_USE_CLANG']
       :clang
     elsif self['HOMEBREW_USE_LLVM']
       :llvm
     elsif self['HOMEBREW_USE_GCC']
       :gcc
     else
-      :gcc
+      MacOS.default_compiler
     end
   end
 
