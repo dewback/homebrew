@@ -29,7 +29,6 @@ class Ffmpeg < Formula
             "--enable-gpl",
             "--enable-version3",
             "--enable-nonfree",
-            "--enable-shared",
             "--enable-hardcoded-tables"]
 
     args << "--enable-libx264" if Formula.factory('x264').installed?
