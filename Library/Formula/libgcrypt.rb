@@ -18,6 +18,8 @@ class Libgcrypt < Formula
 
     ENV.append 'CFLAGS', "-fheinous-gnu-extensions -std=gnu89" if ENV.compiler == :clang
 
+    ENV.append 'CFLAGS', "-fheinous-gnu-extensions -std=gnu89" if ENV.compiler == :clang
+
     system "./configure", "--disable-dependency-tracking",
                           "--prefix=#{prefix}",
  #                         "--disable-asm",
