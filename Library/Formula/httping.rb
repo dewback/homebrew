@@ -1,16 +1,16 @@
 require 'formula'
 
 class Httping < Formula
-  url 'http://www.vanheusden.com/httping/httping-1.4.4.tgz'
   homepage 'http://www.vanheusden.com/httping/'
-  md5 'e36bb30bd758c766d7260bdde6fe6450'
+  url 'http://www.vanheusden.com/httping/httping-2.3.3.tgz'
+  sha1 '6b9e77039346388e2b02dbb1d60f7422e7133488'
 
-  def patches
-    # fixes conflicting definitions of strdup()
-    { :p0 => 'https://svn.macports.org/repository/macports/!svn/bc/88419/trunk/dports/net/httping/files/patch-strndup.diff' }
-  end
+  depends_on 'gettext'
+  depends_on 'fftw' => :optional
 
   def install
-    system "make install PREFIX=#{prefix}"
+    ENV.append "LDFLAGS", "-lintl"
+    inreplace "Makefile", "cp nl.mo $(DESTDIR)/$(PREFIX)/share/locale/nl/LC_MESSAGES/httping.mo", ""
+    system "make", "install", "PREFIX=#{prefix}"
   end
 end

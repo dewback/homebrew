@@ -1,12 +1,12 @@
 require 'formula'
 
 class Synfigstudio < Formula
-  url 'http://downloads.sourceforge.net/project/synfig/synfigstudio/0.63.02/synfigstudio-0.63.02.tar.gz'
   homepage 'http://synfig.org'
-  md5 '939595974cc56551fa89ae4f4dddbfb0'
+  url 'http://downloads.sourceforge.net/project/synfig/releases/0.64.1/source/synfigstudio-0.64.1.tar.gz'
+  sha1 '0ba926d567fbfb79ba84899a2fcd79e54e33d4a4'
 
-  skip_clean :all # So modules will load
-
+  depends_on 'pkg-config' => :build
+  depends_on 'intltool' => :build
   depends_on 'gettext'
   depends_on 'libsigc++'
   depends_on 'gtkmm'
@@ -14,8 +14,8 @@ class Synfigstudio < Formula
   depends_on 'synfig'
 
   def install
-    system "autoreconf --install --force"
-    system "./configure", "--disable-debug", "--disable-dependency-tracking",
+    system "./configure", "--disable-debug",
+                          "--disable-dependency-tracking",
                           "--prefix=#{prefix}"
     system "make install"
   end

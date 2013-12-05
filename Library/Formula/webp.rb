@@ -1,16 +1,25 @@
 require 'formula'
 
 class Webp < Formula
-  url 'http://webp.googlecode.com/files/libwebp-0.1.3.tar.gz'
   homepage 'http://code.google.com/speed/webp/'
-  md5 '254d4670e14e9ed881f0536b006ab336'
+  url 'https://webp.googlecode.com/files/libwebp-0.3.1.tar.gz'
+  sha1 '52e3d2b6c0b80319baa33b8ebed89618769d9dd8'
 
-  depends_on 'jpeg'
+  depends_on :libpng
+  depends_on 'jpeg' => :recommended
 
   def install
-    ENV.x11
-
-    system "./configure", "--prefix=#{prefix}", "--disable-dependency-tracking"
+    system "./configure", "--disable-dependency-tracking",
+                          "--enable-libwebpmux",
+                          "--enable-libwebpdemux",
+                          "--enable-libwebpdecoder",
+                          "--prefix=#{prefix}"
     system "make install"
+  end
+
+  test do
+    system "#{bin}/cwebp", \
+      "/usr/share/doc/cups/images/cups.png", "-o", "webp_test.png"
+    system "#{bin}/dwebp", "webp_test.png", "-o", "webp_test.webp"
   end
 end

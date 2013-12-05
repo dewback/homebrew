@@ -1,50 +1,87 @@
 require 'formula'
 
+class UniversalPython < Requirement
+  satisfy(:build_env => false) { archs_for_command("python").universal? }
+
+  def message; <<-EOS.undent
+    A universal build was requested, but Python is not a universal build
+
+    Boost compiles against the Python it finds in the path; if this Python
+    is not a universal build then linking will likely fail.
+    EOS
+  end
+end
+
 class Boost < Formula
   homepage 'http://www.boost.org'
-  url 'http://downloads.sourceforge.net/project/boost/boost/1.48.0/boost_1_48_0.tar.bz2'
-  md5 'd1e9a7a7f532bb031a3c175d86688d95'
-  head 'http://svn.boost.org/svn/boost/trunk', :using => :svn
+  url 'http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.bz2'
+  sha1 'cef9a0cc7084b1d639e06cd3bc34e4251524c840'
 
-  # Bottle built on 10.7.2 using XCode 4.2
-  bottle 'https://downloads.sourceforge.net/project/machomebrew/Bottles/boost-1.48.0-bottle.tar.gz'
-  bottle_sha1 'acabb0317509faf6868d7dc392656513b859d7c7'
+  head 'http://svn.boost.org/svn/boost/trunk'
 
-  def patches
-    # https://svn.boost.org/trac/boost/ticket/6131
-    #
-    # #define foreach BOOST_FOREACH causes weird compile error in certain
-    # circumstances with boost 1.48
-    #
-    # #define foreach BOOST_FOREACH causes compile error "'boost::BOOST_FOREACH'
-    # has not been declared" on its line if it appears after #include
-    # <boost/foreach.hpp> and before certain other boost headers.
-    DATA
+  bottle do
+    cellar :any
+    revision 1
+    sha1 'e715bed5765c5a89fd2c7f2938bf4db405a11fbc' => :mavericks
+    sha1 '099a7374e95690e2268f7abbd4ccfb0559541b73' => :mountain_lion
+    sha1 '1961f75f2139f3f0998aae03a1be8e9ac553d292' => :lion
   end
 
-  def options
-    [
-      ["--with-mpi", "Enable MPI support"],
-      ["--universal", "Build universal binaries"],
-      ["--without-python", "Build without Python"]
-    ]
+  env :userpaths
+
+  option :universal
+  option 'with-icu', 'Build regexp engine with icu support'
+  option 'without-single', 'Disable building single-threading variant'
+  option 'without-static', 'Disable building static library variant'
+  option 'with-mpi', 'Build with MPI support'
+  option :cxx11
+
+  depends_on :python => :recommended
+  depends_on UniversalPython if build.universal? and build.with? "python"
+
+  if build.with? 'icu'
+    if build.cxx11?
+      depends_on 'icu4c' => 'c++11'
+    else
+      depends_on 'icu4c'
+    end
   end
 
-  # Both clang and llvm-gcc provided by XCode 4.1 compile Boost 1.47.0 properly.
-  # Moreover, Apple LLVM compiler 2.1 is now among primary test compilers.
-  if MacOS.xcode_version < "4.1"
-    fails_with_llvm "LLVM-GCC causes errors with dropped arguments to functions when linking with boost"
+  if build.with? 'mpi'
+    if build.cxx11?
+      depends_on 'open-mpi' => 'c++11'
+    else
+      depends_on :mpi => [:cc, :cxx, :optional]
+    end
+  end
+
+  odie 'boost: --with-c++11 has been renamed to --c++11' if build.with? 'c++11'
+
+  fails_with :llvm do
+    build 2335
+    cause "Dropped arguments to functions when linking with boost"
   end
 
   def install
-    if ARGV.build_universal? and not ARGV.include? "--without-python"
-      archs = archs_for_command("python")
-      unless archs.universal?
-        opoo "A universal build was requested, but Python is not a universal build"
-        puts "Boost compiles against the Python it finds in the path; if this Python"
-        puts "is not a universal build then linking will likely fail."
-      end
+    # https://svn.boost.org/trac/boost/ticket/8841
+    if build.with? 'mpi' and not build.without? 'single'
+      raise <<-EOS.undent
+        Building MPI support for both single and multi-threaded flavors
+        is not supported.  Please use '--with-mpi' together with
+        '--without-single'.
+      EOS
     end
+
+    if build.cxx11? and build.with? 'mpi' and python
+      raise <<-EOS.undent
+        Building MPI support for Python using C++11 mode results in
+        failure and hence disabled.  Please don't use this combination
+        of options.
+      EOS
+    end
+
+    ENV.universal_binary if build.universal?
+    ENV.cxx11 if build.cxx11?
 
     # Adjust the name the libs are installed under to include the path to the
     # Homebrew lib directory so executables will work when installed to a
@@ -61,89 +98,103 @@ class Boost < Formula
     # /usr/local/bin/mkvmerge:
     #   /usr/local/lib/libboost_regex-mt.dylib (compatibility version 0.0.0, current version 0.0.0)
     #   /usr/local/lib/libboost_filesystem-mt.dylib (compatibility version 0.0.0, current version 0.0.0)
-    #   /usr/local/libboost_system-mt.dylib (compatibility version 0.0.0, current version 0.0.0)
+    #   /usr/local/lib/libboost_system-mt.dylib (compatibility version 0.0.0, current version 0.0.0)
     inreplace 'tools/build/v2/tools/darwin.jam', '-install_name "', "-install_name \"#{HOMEBREW_PREFIX}/lib/"
+
+    # boost will try to use cc, even if we'd rather it use, say, gcc-4.2
+    inreplace 'tools/build/v2/engine/build.sh', 'BOOST_JAM_CC=cc', "BOOST_JAM_CC=#{ENV.cc}"
+    inreplace 'tools/build/v2/engine/build.jam', 'toolset darwin cc', "toolset darwin #{ENV.cc}"
 
     # Force boost to compile using the appropriate GCC version
     open("user-config.jam", "a") do |file|
-      file.write "using darwin : : #{ENV['CXX']} ;\n"
-      file.write "using mpi ;\n" if ARGV.include? '--with-mpi'
+      file.write "using darwin : : #{ENV.cxx} ;\n"
+      file.write "using mpi ;\n" if build.with? 'mpi'
     end
+
+    # we specify libdir too because the script is apparently broken
+    bargs = ["--prefix=#{prefix}", "--libdir=#{lib}"]
+
+    if build.with? 'icu'
+      icu4c_prefix = Formula.factory('icu4c').opt_prefix
+      bargs << "--with-icu=#{icu4c_prefix}"
+    else
+      bargs << '--without-icu'
+    end
+
+    # Handle libraries that will not be built.
+    without_libraries = []
+
+    # The context library is implemented as x86_64 ASM, so it
+    # won't build on PPC or 32-bit builds
+    # see https://github.com/mxcl/homebrew/issues/17646
+    if Hardware::CPU.ppc? || Hardware::CPU.is_32_bit? || build.universal?
+      without_libraries << "context"
+      # The coroutine library depends on the context library.
+      without_libraries << "coroutine"
+    end
+
+    # Boost.Log cannot be built using Apple GCC at the moment. Disabled
+    # on such systems.
+    without_libraries << "log" if ENV.compiler == :gcc || ENV.compiler == :llvm
+
+    without_libraries << "python" if build.without? 'python'
+    without_libraries << "mpi" if build.without? 'mpi'
+
+    bargs << "--without-libraries=#{without_libraries.join(',')}"
 
     args = ["--prefix=#{prefix}",
             "--libdir=#{lib}",
+            "-d2",
             "-j#{ENV.make_jobs}",
             "--layout=tagged",
             "--user-config=user-config.jam",
-            "threading=multi",
             "install"]
 
-    args << "address-model=32_64" << "architecture=x86" << "pch=off" if ARGV.include? "--universal"
-    args << "--without-python" if ARGV.include? "--without-python"
+    if build.include? 'without-single'
+      args << "threading=multi"
+    else
+      args << "threading=multi,single"
+    end
 
-    # we specify libdir too because the script is apparently broken
-    system "./bootstrap.sh", "--prefix=#{prefix}", "--libdir=#{lib}"
-    system "./bjam", *args
+    if build.include? 'without-static'
+      args << "link=shared"
+    else
+      args << "link=shared,static"
+    end
+
+    args << "address-model=32_64" << "architecture=x86" << "pch=off" if build.universal?
+
+    system "./bootstrap.sh", *bargs
+    system "./b2", *args
+  end
+
+  def caveats
+    s = ''
+    # ENV.compiler doesn't exist in caveats. Check library availability
+    # instead.
+    if Dir.glob("#{lib}/libboost_log*").empty?
+      s += <<-EOS.undent
+
+      Building of Boost.Log is disabled because it requires newer GCC or Clang.
+      EOS
+    end
+
+    if Hardware::CPU.ppc? || Hardware::CPU.is_32_bit? || build.universal?
+      s += <<-EOS.undent
+
+      Building of Boost.Context and Boost.Coroutine is disabled as they are
+      only supported on x86_64.
+      EOS
+    end
+
+    if pour_bottle? and Formula.factory('python').installed?
+      s += <<-EOS.undent
+
+      The Boost bottle's module will not import into a Homebrew-installed Python.
+      If you use the Boost Python module then please:
+        brew install boost --build-from-source
+      EOS
+    end
+    s
   end
 end
-__END__
-Index: /boost/foreach_fwd.hpp
-===================================================================
---- /boost/foreach_fwd.hpp  (revision 62661)
-+++ /boost/foreach_fwd.hpp  (revision 75540)
-@@ -15,4 +15,6 @@
- #define BOOST_FOREACH_FWD_HPP
-
-+#include <utility> // for std::pair
-+
- // This must be at global scope, hence the uglified name
- enum boost_foreach_argument_dependent_lookup_hack
-@@ -26,4 +28,7 @@
- namespace foreach
- {
-+    template<typename T>
-+    std::pair<T, T> in_range(T begin, T end);
-+
-     ///////////////////////////////////////////////////////////////////////////////
-     // boost::foreach::tag
-@@ -47,4 +52,22 @@
- } // namespace foreach
-
-+// Workaround for unfortunate https://svn.boost.org/trac/boost/ticket/6131
-+namespace BOOST_FOREACH
-+{
-+    using foreach::in_range;
-+    using foreach::tag;
-+
-+    template<typename T>
-+    struct is_lightweight_proxy
-+      : foreach::is_lightweight_proxy<T>
-+    {};
-+
-+    template<typename T>
-+    struct is_noncopyable
-+      : foreach::is_noncopyable<T>
-+    {};
-+
-+} // namespace BOOST_FOREACH
-+
- } // namespace boost
-
-Index: /boost/foreach.hpp
-===================================================================
---- /boost/foreach.hpp  (revision 75077)
-+++ /boost/foreach.hpp  (revision 75540)
-@@ -166,5 +166,5 @@
- //   at the global namespace for your type.
- template<typename T>
--inline boost::foreach::is_lightweight_proxy<T> *
-+inline boost::BOOST_FOREACH::is_lightweight_proxy<T> *
- boost_foreach_is_lightweight_proxy(T *&, BOOST_FOREACH_TAG_DEFAULT) { return 0; }
-
-@@ -191,5 +191,5 @@
- //   at the global namespace for your type.
- template<typename T>
--inline boost::foreach::is_noncopyable<T> *
-+inline boost::BOOST_FOREACH::is_noncopyable<T> *
- boost_foreach_is_noncopyable(T *&, BOOST_FOREACH_TAG_DEFAULT) { return 0; }
-

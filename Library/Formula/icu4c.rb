@@ -1,24 +1,33 @@
 require 'formula'
 
 class Icu4c < Formula
-  url 'http://download.icu-project.org/files/icu4c/4.8.1.1/icu4c-4_8_1_1-src.tgz'
   homepage 'http://site.icu-project.org/'
-  md5 'ea93970a0275be6b42f56953cd332c17'
-  version '4.8.1.1'
+  url 'http://download.icu-project.org/files/icu4c/52.1/icu4c-52_1-src.tgz'
+  version '52.1'
+  sha1 '6de440b71668f1a65a9344cdaf7a437291416781'
+  head 'http://source.icu-project.org/repos/icu/icu/trunk/', :using => :svn
 
-  bottle 'https://downloads.sf.net/project/machomebrew/Bottles/icu4c-4.8.1.1-bottle.tar.gz'
-  bottle_sha1 'a4a5eb012eab4adeb3ad87734628a3aa8ca7dcc2'
+  bottle do
+    sha1 '3205496d69fcf985a92954a170dc29abbbc6ae85' => :mountain_lion
+    sha1 '7188afe2066586d3c79480f591f0c373a32422a0' => :lion
+    sha1 'cd9b8955fc41b46fa57c6f3697e4689eff02c7c3' => :snow_leopard
+  end
 
   keg_only "Conflicts; see: https://github.com/mxcl/homebrew/issues/issue/167"
 
+  option :universal
+  option :cxx11
+
   def install
-    ENV.append "LDFLAGS", "-headerpad_max_install_names"
-    config_flags = ["--prefix=#{prefix}", "--disable-samples", "--enable-static"]
-    config_flags << "--with-library-bits=64" if MacOS.prefer_64_bit?
-    Dir.chdir "source" do
-      system "./configure", *config_flags
-      system "make"
-      system "make install"
+    ENV.universal_binary if build.universal?
+    ENV.cxx11 if build.cxx11?
+
+    args = ["--prefix=#{prefix}", "--disable-samples", "--disable-tests", "--enable-static"]
+    args << "--with-library-bits=64" if MacOS.prefer_64_bit?
+    cd "source" do
+      system "./configure", *args
+      system "make", "VERBOSE=1"
+      system "make", "VERBOSE=1", "install"
     end
   end
 end

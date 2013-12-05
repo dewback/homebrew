@@ -1,57 +1,28 @@
 require 'formula'
 
 class Riak < Formula
-  url 'http://downloads.basho.com/riak/CURRENT/riak-1.0.2.tar.gz'
-  homepage 'http://wiki.basho.com/Riak.html'
-  md5 '322a1c66374f83a50519401e0386b15b'
+  homepage 'http://basho.com/riak/'
+  url 'http://s3.amazonaws.com/downloads.basho.com/riak/1.4/1.4.2/osx/10.8/riak-1.4.2-OSX-x86_64.tar.gz'
+  version '1.4.2'
+  sha256 '2accc58a0ea2f7bd3edc31c934edb0bff6a1535994607fd6cec9c6bbefcf2abf'
 
-  head 'https://github.com/basho/riak.git'
+  devel do
+    url 'http://s3.amazonaws.com/downloads.basho.com/riak/2.0/2.0.0pre5/osx/10.8/riak-2.0.0pre5-OSX-x86_64.tar.gz'
+    sha1 '2394a7244329b60afd87307e3362d784a1611689'
+    version '2.0.0-pre5'
+  end
 
-  skip_clean 'libexec/log'
-  skip_clean 'libexec/log/sasl'
-  skip_clean 'libexec/data'
-  skip_clean 'libexec/data/dets'
-  skip_clean 'libexec/data/ring'
-
-  depends_on 'erlang'
-
-  # Enable use of Erlang R14B04
-  # This was fixed upstream, so when updating the version of Riak
-  # check if this fix is already in place.
-  def patches; DATA; end
+  depends_on :macos => :mountain_lion
+  depends_on :arch => :x86_64
 
   def install
-    ENV.deparallelize
-    system "make all rel"
-    %w(riak riak-admin search-cmd).each do |file|
-      inreplace "rel/riak/bin/#{file}", /^RUNNER_BASE_DIR=.+$/, "RUNNER_BASE_DIR=#{libexec}"
+    libexec.install Dir['*']
+    inreplace Dir["#{libexec}/lib/env.sh"] do |s|
+      s.change_make_var! "RUNNER_BASE_DIR", prefix/libexec
     end
-
-    # Install most files to private libexec, and link in the binaries.
-    libexec.install Dir["rel/riak/*"]
-    bin.mkpath
-    ln_s libexec+'bin/riak', bin
-    ln_s libexec+'bin/riak-admin', bin
-    ln_s libexec+'bin/search-cmd', bin
-
-    (prefix + 'data/ring').mkpath
-    (prefix + 'data/dets').mkpath
-
-    # Install man pages
-    man1.install Dir["doc/man/man1/*"]
+    bin.write_exec_script libexec/'bin/riak'
+    bin.write_exec_script libexec/'bin/riak-admin'
+    bin.write_exec_script libexec/'bin/riak-debug'
+    bin.write_exec_script libexec/'bin/search-cmd'
   end
 end
-
-__END__
-diff --git a/rebar.config b/rebar.config
-index ee81bfc..31d2fae 100644
---- a/rebar.config
-+++ b/rebar.config
-@@ -1,6 +1,6 @@
- {sub_dirs, ["rel"]}.
- 
--{require_otp_vsn, "R14B0[23]"}.
-+{require_otp_vsn, "R14B0[234]"}.
- 
- {cover_enabled, true}.
- 

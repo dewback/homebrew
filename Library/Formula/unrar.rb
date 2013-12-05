@@ -1,15 +1,12 @@
 require 'formula'
 
 class Unrar < Formula
-  url 'http://www.rarlab.com/rar/unrarsrc-4.0.7.tar.gz'
-  sha1 'e4c8b0d47278475f3dfb77e8497f5818eca3d4a0'
   homepage 'http://www.rarlab.com'
+  url 'http://www.rarlab.com/rar/unrarsrc-5.0.13.tar.gz'
+  sha1 '411644d3d31fa021163eab66751d4f4fa9bce8c7'
 
   def install
-    system "make --makefile makefile.unix"
+    system "make"
     bin.install 'unrar'
-
-    mv 'license.txt', 'COPYING'
-    mv 'readme.txt', 'README'
   end
 end

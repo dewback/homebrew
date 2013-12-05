@@ -1,76 +1,74 @@
 require 'formula'
 
-class ErlangManuals < Formula
-  url 'http://erlang.org/download/otp_doc_man_R14B04.tar.gz'
-  md5 'f31e72518daae4007f595c0b224dd59f'
-end
-
-class ErlangHtmls < Formula
-  url 'http://erlang.org/download/otp_doc_html_R14B04.tar.gz'
-  md5 '2a440aa8c1242dd0c79785d69f0d97ca'
-end
-
-class ErlangHeadManuals < Formula
-  url 'http://erlang.org/download/otp_doc_man_R14B04.tar.gz'
-  md5 'f31e72518daae4007f595c0b224dd59f'
-end
-
-class ErlangHeadHtmls < Formula
-  url 'http://erlang.org/download/otp_doc_html_R14B04.tar.gz'
-  md5 '2a440aa8c1242dd0c79785d69f0d97ca'
-end
-
+# Major releases of erlang should typically start out as separate formula in
+# Homebrew-versions, and only be merged to master when things like couchdb and
+# elixir are compatible.
 class Erlang < Formula
   homepage 'http://www.erlang.org'
   # Download tarball from GitHub; it is served faster than the official tarball.
-  url 'https://github.com/erlang/otp/tarball/OTP_R14B04'
-  md5 'f6cd1347dfb6436b99cc1313011a3d24'
-  version 'R14B04'
+  url 'https://github.com/erlang/otp/archive/OTP_R16B02.tar.gz'
+  sha1 '81f72efe58a99ab1839eb6294935572137133717'
 
-  bottle 'https://downloads.sf.net/project/machomebrew/Bottles/erlang-R14B04-bottle.tar.gz'
-  bottle_sha1 'ad262d3d9600e76b816b74fac32b339c4a25c58f'
+  head 'https://github.com/erlang/otp.git', :branch => 'master'
 
-  head 'https://github.com/erlang/otp.git', :branch => 'dev'
-
-  # We can't strip the beam executables or any plugins, there isn't really
-  # anything else worth stripping and it takes a really, long time to run
-  # `file` over everything in lib because there is almost 4000 files (and
-  # really erlang guys! what's with that?! Most of them should be in share/erlang!)
-  # may as well skip bin too, everything is just shell scripts
-  skip_clean ['lib', 'bin']
-
-  def options
-    [
-      ['--disable-hipe', "Disable building hipe; fails on various OS X systems."],
-      ['--halfword', 'Enable halfword emulator (64-bit builds only)'],
-      ['--time', '"brew test --time" to include a time-consuming test.'],
-      ['--no-docs', 'Do not install documentation.']
-    ]
+  bottle do
+    revision 2
+    sha1 'f2f17d7e0fcfc8281a5a49316db73382e2ed2b77' => :mountain_lion
+    sha1 '8afbd3e03333ca368e5036f48d0bcddeb4a4c8dd' => :lion
+    sha1 'bf967eecc1475e38aa0d5636ffb68563df627c5f' => :snow_leopard
   end
 
-  fails_with_llvm :build => 2334
+  resource 'man' do
+    url 'http://erlang.org/download/otp_doc_man_R16B02.tar.gz'
+    sha1 'c64c19d5ab176c8b7c1e05b02b4f2affbed7b0ef'
+  end
+
+  resource 'html' do
+    url 'http://erlang.org/download/otp_doc_html_R16B02.tar.gz'
+    sha1 '142e0b4becc04d3b5bf46a7fa2d48aae43cc84d0'
+  end
+
+  option 'disable-hipe', "Disable building hipe; fails on various OS X systems"
+  option 'halfword', 'Enable halfword emulator (64-bit builds only)'
+  option 'time', '`brew test --time` to include a time-consuming test'
+  option 'no-docs', 'Do not install documentation'
+
+  depends_on :autoconf
+  depends_on :automake
+  depends_on :libtool
+  depends_on 'unixodbc' if MacOS.version >= :mavericks
+  depends_on 'fop' => :optional # enables building PDF docs
+
+  fails_with :llvm
+
+  def patches
+    # Fixes problem with ODBC on Mavericks. Reported upstream:
+    # https://github.com/erlang/otp/pull/142
+    DATA if MacOS.version >= :mavericks
+  end
 
   def install
-    ohai "Compilation may take a very long time; use `brew install -v erlang` to see progress"
-    ENV.deparallelize
-    if ENV.compiler == :llvm
-      # Don't use optimizations. Fixes build on Lion/Xcode 4.2
-      ENV.remove_from_cflags /-O./
-      ENV.append_to_cflags '-O0'
-    end
+    ohai "Compilation takes a long time; use `brew install -v erlang` to see progress" unless ARGV.verbose?
+
+    ENV.append "FOP", "#{HOMEBREW_PREFIX}/bin/fop" if build.with? 'fop'
 
     # Do this if building from a checkout to generate configure
     system "./otp_build autoconf" if File.exist? "otp_build"
 
-    args = ["--disable-debug",
-            "--prefix=#{prefix}",
-            "--enable-kernel-poll",
-            "--enable-threads",
-            "--enable-dynamic-ssl-lib",
-            "--enable-shared-zlib",
-            "--enable-smp-support"]
+    args = %W[
+      --disable-debug
+      --disable-silent-rules
+      --prefix=#{prefix}
+      --enable-kernel-poll
+      --enable-threads
+      --enable-dynamic-ssl-lib
+      --enable-shared-zlib
+      --enable-smp-support
+    ]
 
-    unless ARGV.include? '--disable-hipe'
+    args << "--with-dynamic-trace=dtrace" unless MacOS.version <= :leopard or not MacOS::CLT.installed?
+
+    unless build.include? 'disable-hipe'
       # HIPE doesn't strike me as that reliable on OS X
       # http://syntatic.wordpress.com/2008/06/12/macports-erlang-bus-error-due-to-mac-os-x-1053-update/
       # http://www.erlang.org/pipermail/erlang-patches/2008-September/000293.html
@@ -79,30 +77,49 @@ class Erlang < Formula
 
     if MacOS.prefer_64_bit?
       args << "--enable-darwin-64bit"
-      args << "--enable-halfword-emulator" if ARGV.include? '--halfword' # Does not work with HIPE yet. Added for testing only
+      args << "--enable-halfword-emulator" if build.include? 'halfword' # Does not work with HIPE yet. Added for testing only
     end
 
     system "./configure", *args
-    system "touch lib/wx/SKIP" if MacOS.snow_leopard?
     system "make"
+    ENV.j1 # Install is not thread-safe; can try to create folder twice and fail
     system "make install"
 
-    unless ARGV.include? '--no-docs'
-      manuals = ARGV.build_head? ? ErlangHeadManuals : ErlangManuals
-      manuals.new.brew { man.install Dir['man/*'] }
-
-      htmls = ARGV.build_head? ? ErlangHeadHtmls : ErlangHtmls
-      htmls.new.brew { doc.install Dir['*'] }
+    unless build.include? 'no-docs'
+      (lib/'erlang').install resource('man').files('man')
+      doc.install resource('html')
     end
+  end
+
+  def caveats; <<-EOS.undent
+    Man pages can be found in:
+      #{opt_prefix}/lib/erlang/man
+
+    Access them with `erl -man`, or add this directory to MANPATH.
+    EOS
   end
 
   def test
     `#{bin}/erl -noshell -eval 'crypto:start().' -s init stop`
 
     # This test takes some time to run, but per bug #120 should finish in
-    # "less than 20 minutes". It takes a few minutes on a Mac Pro (2009).
-    if ARGV.include? "--time"
-      `#{bin}/dialyzer --build_plt -r #{lib}/erlang/lib/kernel-2.14.1/ebin/`
+    # "less than 20 minutes". It takes about 20 seconds on a Mac Pro (2009).
+    if build.include?("time") && !build.head?
+      `#{bin}/dialyzer --build_plt -r #{lib}/erlang/lib/kernel-2.16.3/ebin/`
     end
   end
 end
+__END__
+diff --git a/lib/odbc/configure.in b/lib/odbc/configure.in
+index 83f7a47..fd711fe 100644
+--- a/lib/odbc/configure.in
++++ b/lib/odbc/configure.in
+@@ -130,7 +130,7 @@ AC_SUBST(THR_LIBS)
+ odbc_lib_link_success=no
+ AC_SUBST(TARGET_FLAGS)
+     case $host_os in
+-        darwin*)
++        darwin1[[0-2]].*|darwin[[0-9]].*)
+                 TARGET_FLAGS="-DUNIX"
+                if test ! -d "$with_odbc" || test "$with_odbc" = "yes"; then
+                    ODBC_LIB= -L"/usr/lib"

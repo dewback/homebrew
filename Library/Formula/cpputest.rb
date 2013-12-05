@@ -1,13 +1,12 @@
 require 'formula'
 
 class Cpputest < Formula
-  url 'http://downloads.sourceforge.net/project/cpputest/cpputest/v2.3/CppUTest-v2.3.zip'
   homepage 'http://www.cpputest.org/'
-  md5 '0546bf6d0f1513842cfa781255dcbdda'
+  url 'https://github.com/cpputest/cpputest/archive/v3.5.tar.gz'
+  sha1 'a774f99f191db77abf48f4d6b64190bc445369c5'
 
   def install
-    system "make"
-    lib.install ['lib/libCppUTest.a']
-    include.install ['include/CppUTest']
+    system "./configure", "--prefix=#{prefix}"
+    system "make install"
   end
 end

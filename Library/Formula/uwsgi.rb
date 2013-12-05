@@ -1,31 +1,20 @@
 require 'formula'
 
 class Uwsgi < Formula
-  url 'http://projects.unbit.it/downloads/uwsgi-1.0.1.tar.gz'
   homepage 'http://projects.unbit.it/uwsgi/'
-  md5 '6f0a92bc148c1e359638e1ea45199d3b'
+  url 'http://projects.unbit.it/downloads/uwsgi-1.9.18.2.tar.gz'
+  sha1 '613328a2da84a7eb3b6f01f892833f2ef8e591ca'
+
+  depends_on :python
+  depends_on 'pcre'
+  depends_on 'libyaml'
 
   def install
-    # Find the arch for the Python we are building against.
-    # We remove 'ppc' support, so we can pass Intel-optimized CFLAGS.
-    archs = archs_for_command("python")
-    archs.remove_ppc!
-    flags = archs.as_arch_flags
+    python do
+      %w{CFLAGS LDFLAGS}.each { |e| ENV.append e, "-arch #{MacOS.preferred_arch}" }
 
-    ENV.append 'CFLAGS', flags
-    ENV.append 'LDFLAGS', flags
-
-    inreplace 'uwsgiconfig.py', "PYLIB_PATH = ''", "PYLIB_PATH = '#{%x[python-config --ldflags].chomp[/-L(.*?) -l/, 1]}'"
-
-    system "python uwsgiconfig.py --build"
-    bin.install "uwsgi"
-  end
-
-  def caveats
-    <<-EOS.undent
-      NOTE: "brew install -v uwsgi" will fail!
-      You must install in non-verbose mode for this to succeed.
-      Patches to fix this are welcome.
-    EOS
+      system python, "uwsgiconfig.py", "--build"
+      bin.install "uwsgi"
+    end
   end
 end

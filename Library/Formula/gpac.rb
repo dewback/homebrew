@@ -1,6 +1,5 @@
 require 'formula'
 
-#
 # Installs a relatively minimalist version of the GPAC tools. The
 # most commonly used tool in this package is the MP4Box metadata
 # interleaver, which has relatively few dependencies.
@@ -8,14 +7,17 @@ require 'formula'
 # The challenge with building everything is that Gpac depends on
 # a much older version of FFMpeg and WxWidgets than the version
 # that Brew installs
-#
 
 class Gpac < Formula
-  url 'http://downloads.sourceforge.net/gpac/gpac-0.4.5.tar.gz'
-  homepage 'http://gpac.sourceforge.net/index.php'
-  md5 '755e8c438a48ebdb13525dd491f5b0d1'
-  head 'https://gpac.svn.sourceforge.net/svnroot/gpac/trunk/gpac', :using => :svn
+  homepage 'http://gpac.wp.mines-telecom.fr/'
+  url 'http://downloads.sourceforge.net/gpac/gpac-0.5.0.tar.gz'
+  sha1 '48ba16272bfa153abb281ff8ed31b5dddf60cf20'
 
+  head 'https://gpac.svn.sourceforge.net/svnroot/gpac/trunk/gpac'
+
+  depends_on :x11 => MacOS::X11.installed? ? :recommended : :optional
+
+  depends_on 'pkg-config' => :build
   depends_on 'a52dec' => :optional
   depends_on 'jpeg' => :optional
   depends_on 'faad2' => :optional
@@ -24,38 +26,25 @@ class Gpac < Formula
   depends_on 'mad' => :optional
   depends_on 'sdl' => :optional
   depends_on 'theora' => :optional
-
-  depends_on 'ffmpeg' => :optional if ARGV.build_head?
-  depends_on 'openjpeg' => :optional if ARGV.build_head?
-
-  def options
-    [['--with-lowercase', 'Install binaries with lowercase names']]
-  end
+  depends_on 'ffmpeg' => :optional
+  depends_on 'openjpeg' => :optional
 
   def install
     ENV.deparallelize
+
     args = ["--disable-wx",
             "--prefix=#{prefix}",
-            "--mandir=#{man}",
-            # Force detection of X libs on 64-bit kernel
-            "--extra-ldflags=-L/usr/X11/lib"]
-    args << "--use-ffmpeg=no" unless ARGV.build_head?
-    args << "--use-openjpeg=no" unless ARGV.build_head?
+            "--mandir=#{man}"]
 
-    system "chmod +x configure"
-    system "./configure", *args
-
-    system "chmod", "+rw", "Makefile"
-    ["MP4Box","MP4Client"].each do |name|
-      filename = "applications/#{name.downcase}/Makefile"
-      system "chmod", "+rw", filename
-
-      if ARGV.include? '--with-lowercase'
-        inreplace filename, name, name.downcase
-        inreplace "Makefile", name, name.downcase
-      end
+    if build.with? 'x11'
+      # gpac build system is barely functional
+      args << "--extra-cflags=-I#{MacOS::X11.include}"
+      # Force detection of X libs on 64-bit kernel
+      args << "--extra-ldflags=-L#{MacOS::X11.lib}"
     end
 
+    chmod 0700, "configure"
+    system "./configure", *args
     system "make"
     system "make install"
   end

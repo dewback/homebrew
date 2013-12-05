@@ -1,20 +1,23 @@
 require 'formula'
 
 class Embryo < Formula
-  url 'http://download.enlightenment.org/releases/embryo-1.0.0.tar.gz'
   homepage 'http://trac.enlightenment.org/e/wiki/Embryo'
-  md5 '2d6269c931656d5714197e508b144f18'
-  head 'http://svn.enlightenment.org/svn/e/trunk/embryo/', :using => :svn
+  url 'http://download.enlightenment.org/releases/embryo-1.7.9.tar.gz'
+  sha1 '1644da0be669213ce9ed29f1b58e9c6f3ab7c05c'
+
+  head do
+    url 'http://svn.enlightenment.org/svn/e/trunk/embryo/'
+
+    depends_on :autoconf
+    depends_on :automake
+    depends_on :libtool
+  end
 
   depends_on 'pkg-config' => :build
   depends_on 'eina'
 
   def install
-    # hack to allow building with current trunk, will be made obsolete after 1.1
-    # is released: http://comments.gmane.org/gmane.comp.window-managers.enlightenment.devel/30780
-    inreplace 'configure.ac', 'm4_define([v_mic], [999])', 'm4_define([v_mic], [99])' if ARGV.build_head?
-    inreplace 'configure.ac', 'eina >= 1.0.999', 'eina >= 1.0.99' if ARGV.build_head?
-    system "./autogen.sh" if ARGV.build_head?
+    system "./autogen.sh" if build.head?
     system "./configure", "--disable-dependency-tracking",
                           "--prefix=#{prefix}"
     system "make install"

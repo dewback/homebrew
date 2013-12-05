@@ -1,14 +1,16 @@
 require 'formula'
 
 class Unbound < Formula
-  url 'http://www.unbound.net/downloads/unbound-1.4.14.tar.gz'
   homepage 'http://www.unbound.net'
-  md5 'cd69fdaaa6af01ea0b6fbc59802f74ba'
+  url 'http://www.unbound.net/downloads/unbound-1.4.21.tar.gz'
+  sha1 '3ef4ea626e5284368d48ab618fe2207d43f2cee1'
 
   depends_on 'ldns'
 
   def install
-    system "./configure", "--disable-gost", "--prefix=#{prefix}"
+    # gost requires OpenSSL >= 1.0.0, and support built into ldns
+    system "./configure", "--prefix=#{prefix}",
+                          "--disable-gost"
     system "make install"
   end
 end

@@ -1,84 +1,66 @@
 require 'formula'
 
 class Gmp < Formula
-  url 'http://ftpmirror.gnu.org/gmp/gmp-5.0.2.tar.bz2'
-  mirror 'http://ftp.gnu.org/gnu/gmp/gmp-5.0.2.tar.bz2'
   homepage 'http://gmplib.org/'
-  sha1 '2968220e1988eabb61f921d11e5d2db5431e0a35'
+  url 'ftp://ftp.gmplib.org/pub/gmp/gmp-5.1.3.tar.bz2'
+  mirror 'http://ftp.gnu.org/gnu/gmp/gmp-5.1.3.tar.bz2'
+  sha1 'b35928e2927b272711fdfbf71b7cfd5f86a6b165'
 
-  def options
-    [
-      ["--32-bit", "Build 32-bit only."],
-      ["--skip-check", "Do not run 'make check' to verify libraries."]
-    ]
+  bottle do
+    cellar :any
+    revision 2
+    sha1 '8390518974834c6a9e959e3a9d6e5eba91152eec' => :mavericks
+    sha1 'b042ffe0c394dafab04f23ce03dc2cb691dc2a87' => :mountain_lion
+    sha1 'a767aafc398054b6eb413b7dd70c7c9721d84734' => :lion
   end
 
-  # Fixes make check for xcode 4.2. See:
-  # http://gmplib.org/list-archives/gmp-bugs/2011-July/002308.html
+  option '32-bit'
+  option :cxx11
+
+  # Patches gmp.h to remove the __need_size_t define, which
+  # was preventing libc++ builds from getting the ptrdiff_t type
+  # Applied upstream in http://gmplib.org:8000/gmp/raw-rev/6cd3658f5621
   def patches
-    DATA if MacOS.xcode_version >= "4.2"
+    DATA
   end
 
   def install
-    # Reports of problems using gcc 4.0 on Leopard
-    # https://github.com/mxcl/homebrew/issues/issue/2302
-    # Also force use of 4.2 on 10.6 in case a user has changed the default
-    # Do not force if xcode > 4.2 since it does not have /usr/bin/gcc-4.2 as default
-    unless MacOS.xcode_version >= "4.2"
-      ENV.gcc_4_2
-    end
-
+    ENV.cxx11 if build.cxx11?
     args = ["--prefix=#{prefix}", "--enable-cxx"]
 
-    # Build 32-bit where appropriate, and help configure find 64-bit CPUs
-    # see: http://gmplib.org/macos.html
-    if MacOS.prefer_64_bit? and not ARGV.build_32_bit?
-      ENV.m64
-      args << "--build=x86_64-apple-darwin"
-    else
+    if build.build_32_bit?
       ENV.m32
-      args << "--build=none-apple-darwin"
+      ENV.append 'ABI', '32'
+      # https://github.com/mxcl/homebrew/issues/20693
+      args << "--disable-assembly"
+    elsif build.bottle?
+      args << "--disable-assembly"
     end
 
     system "./configure", *args
     system "make"
-    ENV.j1 # Doesn't install in parallel on 8-core Mac Pro
+    system "make check"
+    ENV.deparallelize
     system "make install"
-
-    # Different compilers and options can cause tests to fail even
-    # if everything compiles, so yes, we want to do this step.
-    system "make check" unless ARGV.include? "--skip-check"
   end
 end
 
 __END__
-diff --git a/acinclude.m4 b/acinclude.m4
-index 699dd7b..87b5f6f 100644
---- a/acinclude.m4
-+++ b/acinclude.m4
-@@ -1941,8 +1941,8 @@ X86_PATTERN | x86_64-*-*)
- esac
+diff --git a/gmp-h.in b/gmp-h.in
+index 7deb67a..240d663 100644
+--- a/gmp-h.in
++++ b/gmp-h.in
+@@ -46,13 +46,11 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+ #ifndef __GNU_MP__
+ #define __GNU_MP__ 5
  
- cat >conftest.c <<EOF
--extern const int foo[];		/* Suppresses C++'s suppression of foo */
--const int foo[] = {1,2,3};
-+extern const int foo[[]];		/* Suppresses C++'s suppression of foo */
-+const int foo[[]] = {1,2,3};
- EOF
- echo "Test program:" >&AC_FD_CC
- cat conftest.c >&AC_FD_CC
-diff --git a/configure b/configure
-index 07b9fda..f6df8cd 100755
---- a/configure
-+++ b/configure
-@@ -26446,8 +26446,8 @@ i?86*-*-* | k[5-8]*-*-* | pentium*-*-* | athlon-*-* | viac3*-*-* | geode*-*-* |
- esac
+-#define __need_size_t  /* tell gcc stddef.h we only want size_t */
+ #if defined (__cplusplus)
+ #include <cstddef>     /* for size_t */
+ #else
+ #include <stddef.h>    /* for size_t */
+ #endif
+-#undef __need_size_t
  
- cat >conftest.c <<EOF
--extern const int foo;		/* Suppresses C++'s suppression of foo */
--const int foo = {1,2,3};
-+extern const int foo[];		/* Suppresses C++'s suppression of foo */
-+const int foo[] = {1,2,3};
- EOF
- echo "Test program:" >&5
- cat conftest.c >&5
+ /* Instantiated by configure. */
+ #if ! defined (__GMP_WITHIN_CONFIGURE)

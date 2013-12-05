@@ -1,9 +1,9 @@
 require 'formula'
 
 class Cassandra < Formula
-  url 'http://www.apache.org/dyn/closer.cgi?path=/cassandra/1.0.5/apache-cassandra-1.0.5-bin.tar.gz'
   homepage 'http://cassandra.apache.org'
-  sha1 'e9b06bd3d9173babfc406593d586599eb96c72e6'
+  url 'http://www.apache.org/dyn/closer.cgi?path=/cassandra/2.0.3/apache-cassandra-2.0.3-bin.tar.gz'
+  sha1 '0d77b92172e45ef879a7decc00ca4dbe48ef1e1d'
 
   def install
     (var+"lib/cassandra").mkpath
@@ -12,61 +12,63 @@ class Cassandra < Formula
 
     inreplace "conf/cassandra.yaml", "/var/lib/cassandra", "#{var}/lib/cassandra"
     inreplace "conf/log4j-server.properties", "/var/log/cassandra", "#{var}/log/cassandra"
-
-    inreplace "conf/cassandra-env.sh" do |s|
-      s.gsub! "/lib/", "/"
-    end
+    inreplace "conf/cassandra-env.sh", "/lib/", "/"
 
     inreplace "bin/cassandra.in.sh" do |s|
-      s.gsub! "CASSANDRA_HOME=`dirname $0`/..", "CASSANDRA_HOME=#{prefix}"
+      s.gsub! "CASSANDRA_HOME=\"`dirname \"$0\"`/..\"", "CASSANDRA_HOME=\"#{prefix}\""
       # Store configs in etc, outside of keg
-      s.gsub! "CASSANDRA_CONF=$CASSANDRA_HOME/conf", "CASSANDRA_CONF=#{etc}/cassandra"
+      s.gsub! "CASSANDRA_CONF=\"$CASSANDRA_HOME/conf\"", "CASSANDRA_CONF=\"#{etc}/cassandra\""
       # Jars installed to prefix, no longer in a lib folder
-      s.gsub! "$CASSANDRA_HOME/lib/*.jar", "$CASSANDRA_HOME/*.jar"
+      s.gsub! "\"$CASSANDRA_HOME\"/lib/*.jar", "\"$CASSANDRA_HOME\"/*.jar"
     end
 
     rm Dir["bin/*.bat"]
 
     (etc+"cassandra").install Dir["conf/*"]
-    prefix.install Dir["*.txt"] + Dir["{bin,interface,javadoc,lib/licenses}"]
+    prefix.install Dir["*.txt"] + Dir["{bin,interface,javadoc,pylib,lib/licenses}"]
     prefix.install Dir["lib/*.jar"]
 
-    (prefix+'org.apache.cassandra.plist').write startup_plist
-    (prefix+'org.apache.cassandra.plist').chmod 0644
+    share.install [bin+'cassandra.in.sh', bin+'stop-server']
+    inreplace Dir["#{bin}/cassandra*", "#{bin}/debug-cql",
+                  "#{bin}/json2sstable", "#{bin}/nodetool",
+                  "#{bin}/sstable*"],
+      /`dirname "?\$0"?`\/cassandra.in.sh/,
+      "#{share}/cassandra.in.sh"
   end
 
   def caveats; <<-EOS.undent
-    If this is your first install, automatically load on login with:
-      mkdir -p ~/Library/LaunchAgents
-      cp #{prefix}/org.apache.cassandra.plist ~/Library/LaunchAgents/
-      launchctl load -w ~/Library/LaunchAgents/org.apache.cassandra.plist
+    If you plan to use the CQL shell (cqlsh), you will need the Python CQL library
+    installed. Since Homebrew prefers using pip for Python packages, you can
+    install that using:
+
+      pip install cql
     EOS
   end
 
-  def startup_plist; <<-EOPLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-  <dict>
-    <key>KeepAlive</key>
-    <true/>
+  def plist; <<-EOS.undent
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+      <dict>
+        <key>KeepAlive</key>
+        <true/>
 
-    <key>Label</key>
-    <string>org.apache.cassandra</string>
+        <key>Label</key>
+        <string>#{plist_name}</string>
 
-    <key>ProgramArguments</key>
-    <array>
-        <string>#{bin}/cassandra</string>
-        <string>-f</string>
-    </array>
+        <key>ProgramArguments</key>
+        <array>
+            <string>#{opt_prefix}/bin/cassandra</string>
+            <string>-f</string>
+        </array>
 
-    <key>RunAtLoad</key>
-    <true/>
+        <key>RunAtLoad</key>
+        <true/>
 
-    <key>WorkingDirectory</key>
-    <string>#{var}/lib/cassandra</string>
-  </dict>
-</plist>
-    EOPLIST
+        <key>WorkingDirectory</key>
+        <string>#{var}/lib/cassandra</string>
+      </dict>
+    </plist>
+    EOS
   end
 end

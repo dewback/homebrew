@@ -1,10 +1,16 @@
 require 'formula'
 
 class Neo4j < Formula
-  url 'http://dist.neo4j.org/neo4j-community-1.5-unix.tar.gz'
-  version 'community-1.5'
   homepage 'http://neo4j.org'
-  md5 '7a48947c8bccef033098e5872510cb72'
+  url 'http://dist.neo4j.org/neo4j-community-1.9.5-unix.tar.gz'
+  sha1 '8d3569fdd4f3b396fd8101a7f9f92087cef3ac7f'
+  version '1.9.5'
+
+  devel do
+    url 'http://dist.neo4j.org/neo4j-community-2.0.0-RC1-unix.tar.gz'
+    sha1 'c7c59df7c0363439244ad1c4e2e837db5ab07cb3'
+    version '2.0.0-RC1'
+  end
 
   def install
     # Remove windows files
@@ -17,8 +23,44 @@ class Neo4j < Formula
     libexec.install Dir['*']
 
     # Symlink binaries
-    bin.mkpath
-    ln_s "#{libexec}/bin/neo4j", bin+"neo4j"
-    ln_s "#{libexec}/bin/neo4j-shell", bin+"neo4j-shell"
+    bin.install_symlink Dir["#{libexec}/bin/neo4j{,-shell}"]
+
+    # Adjust UDC props
+    open("#{libexec}/conf/neo4j-wrapper.conf", 'a') { |f|
+      f.puts "wrapper.java.additional.4=-Dneo4j.ext.udc.source=homebrew"
+
+      # suppress the empty, focus-stealing java gui
+      f.puts "wrapper.java.additional=-Djava.awt.headless=true"
+    }
+  end
+
+  def caveats; <<-EOS.undent
+    Quick-start guide:
+
+        1. Start the server manually:
+            neo4j start
+
+        2. Open webadmin:
+            open http://localhost:7474/webadmin/
+
+        3. Start exploring the REST API:
+            curl -v http://localhost:7474/db/data/
+
+        4. Stop:
+            neo4j stop
+
+    To launch on startup, install launchd-agent to ~/Library/LaunchAgents/ with:
+        neo4j install
+
+    If this is an upgrade, see:
+        #{libexec}/UPGRADE.txt
+
+    The manual can be found in:
+        #{libexec}/doc/
+
+    You may need to add JAVA_HOME to your shell profile:
+        export JAVA_HOME="$(/usr/libexec/java_home)"
+
+    EOS
   end
 end

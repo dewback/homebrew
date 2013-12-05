@@ -1,14 +1,21 @@
 require 'formula'
 
 class Fossil < Formula
-  version '1.20'
-  url 'http://www.fossil-scm.org/download/fossil-src-20111021125253.tar.gz'
-  md5 'd3bd7d3bf60b523578f37315cd8a8f12'
   homepage 'http://www.fossil-scm.org/'
   head 'fossil://http://www.fossil-scm.org/'
+  url 'http://www.fossil-scm.org/download/fossil-src-20130911114349.tar.gz'
+  sha1 '2e2149fff30d63a1869ecb5a7d6b17996477612a'
+  version '1.27'
+
+  option 'without-json', 'Build without "json" command support.'
+  option 'without-tcl', "Build without the tcl-th1 command bridge."
 
   def install
-    system "./configure"
+    args = []
+    args << "--json" if build.with? 'json'
+    args << "--with-tcl" if build.with? 'tcl'
+
+    system "./configure", *args
     system "make"
     bin.install 'fossil'
   end

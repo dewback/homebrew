@@ -1,10 +1,10 @@
 require 'formula'
 
 class Giter8 < Formula
-  url "http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/0.11.2/sbt-launch.jar"
-  homepage 'http://github.com/n8han/giter8'
-  md5 '2886cc391e38fa233b3e6c0ec9adfa1e'
-  version '0.3.2'
+  homepage 'https://github.com/n8han/giter8'
+  url "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.0/sbt-launch.jar"
+  sha1 'b78a29b8db7ae0fc90a7890a84a4617975e1d450'
+  version '0.6.0'
 
   def exec_script
      <<-EOS
@@ -16,19 +16,16 @@ exec java -Xmx512M -jar #{prefix}/sbt-launch.jar @giter8.launchconfig "$@"
   def config_script
     <<-EOS
 [app]
-  version: 0.3.2
-  org: net.databinder
+  version: 0.6.0
+  org: net.databinder.giter8
   name: giter8
   class: giter8.Giter8
 [scala]
   version: 2.9.1
 [repositories]
   local
-  maven-local
   scala-tools-releases
   maven-central
-  clapper: http://maven.clapper.org/
-  databinder: http://databinder.net/repo/
 [boot]
   directory: #{prefix}/boot
     EOS

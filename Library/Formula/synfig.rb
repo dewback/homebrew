@@ -1,16 +1,11 @@
 require 'formula'
 
 class Synfig < Formula
-  url 'https://downloads.sourceforge.net/project/synfig/synfig/0.63.02/synfig-0.63.02.tar.gz'
   homepage 'http://synfig.org'
-  md5 '4286d5e1887275107d760d1b678aec24'
+  url 'http://downloads.sourceforge.net/project/synfig/releases/0.64.1/source/synfig-0.64.1.tar.gz'
+  sha1 '19fe81f144100c3f5e14a1b88b26a9b659fee3b8'
 
-  head 'git://synfig.git.sourceforge.net/gitroot/synfig/synfig', :using => :git
-
-  def patches
-    # this patches synfig to work with libpng 1.5 per http://sourceforge.net/tracker/?func=detail&aid=3427945&group_id=144022&atid=757416
-    { :p2 => "http://sourceforge.net/tracker/download.php?group_id=144022&atid=757416&file_id=426842&aid=3427945" }
-  end
+  head 'git://synfig.git.sourceforge.net/gitroot/synfig/synfig'
 
   depends_on 'pkg-config' => :build
   depends_on 'gettext'
@@ -18,10 +13,16 @@ class Synfig < Formula
   depends_on 'libsigc++'
   depends_on 'libxml++'
   depends_on 'imagemagick'
+  depends_on :libpng
+  depends_on :freetype
+  depends_on 'cairo'
+  depends_on 'pango'
+  depends_on 'boost'
+  depends_on :libtool => :run
 
   def install
-    ENV.libpng
-    system "./configure", "--disable-debug", "--disable-dependency-tracking",
+    system "./configure", "--disable-debug",
+                          "--disable-dependency-tracking",
                           "--prefix=#{prefix}"
     system "make install"
   end

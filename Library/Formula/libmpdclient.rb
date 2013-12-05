@@ -1,17 +1,29 @@
 require 'formula'
 
 class Libmpdclient < Formula
-  url 'http://downloads.sourceforge.net/project/musicpd/libmpdclient/2.6/libmpdclient-2.6.tar.bz2'
-  homepage 'http://mpd.wikia.com/wiki/ClientLib:libmpdclient'
-  sha1 '00d88152c0e8599f56d01625da41b55d3a43c264'
+  homepage 'http://www.musicpd.org/libs/libmpdclient/'
+  url 'http://www.musicpd.org/download/libmpdclient/2/libmpdclient-2.9.tar.gz'
+  sha1 'fe40dcb54f79648a17b68c93add2e601077a9311'
 
-  def options
-    [[ '--universal', 'Build a universal library.' ]]
+  head do
+    url 'git://git.musicpd.org/master/libmpdclient.git'
+
+    depends_on :autoconf
+    depends_on :automake
+    depends_on :libtool
   end
 
+  depends_on 'doxygen' => :build
+
+  option :universal
+
   def install
-    ENV.universal_binary if ARGV.build_universal?
-    system "./configure", "--prefix=#{prefix}", "--disable-dependency-tracking"
+    inreplace 'autogen.sh', 'libtoolize', 'glibtoolize'
+    system "./autogen.sh" if build.head?
+
+    ENV.universal_binary if build.universal?
+    system "./configure", "--disable-dependency-tracking",
+                          "--prefix=#{prefix}"
     system "make install"
   end
 end

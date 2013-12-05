@@ -2,15 +2,25 @@ require 'formula'
 
 class Urweb < Formula
   homepage 'http://impredicative.com/ur/'
-  url 'http://impredicative.com/ur/urweb-20111127.tgz'
-  md5 '33276fad9dc6b06782f041bccbdef7ac'
+  url 'http://impredicative.com/ur/urweb-20130421.tgz'
+  sha1 '944165b5f5f638ae54d804e4957618e1ae257b81'
   head 'http://hg.impredicative.com/urweb', :using => :hg
 
+  depends_on :autoconf
+  depends_on :automake
+  depends_on :libtool
   depends_on 'mlton'
+  depends_on :postgresql => :optional
+  depends_on :mysql => :optional
 
   def install
-    system "aclocal && autoreconf -i --force"
-    system "./configure --prefix=#{prefix}"
+    # The autoconf-generated shell scripts in the tarball
+    # are out of sync with our dependencies and force odd
+    # reconfigures and failures when running 'make.' It's better
+    # to just regenerate them and go for it.
+    system "aclocal"
+    system "autoreconf -i --force"
+    system "./configure", "--prefix=#{prefix}"
     system "make"
     system "make install"
   end

@@ -1,11 +1,31 @@
 require 'formula'
 
 class Tomcat < Formula
-  url 'http://www.apache.org/dyn/closer.cgi?path=tomcat/tomcat-7/v7.0.23/bin/apache-tomcat-7.0.23.tar.gz'
   homepage 'http://tomcat.apache.org/'
-  md5 'd8dcd5fb07dd1769d571fdabade9cc68'
+  url 'http://www.apache.org/dyn/closer.cgi?path=tomcat/tomcat-7/v7.0.47/bin/apache-tomcat-7.0.47.tar.gz'
+  sha1 'ea54881535fccb3dfd7da122358d983297d69196'
 
-  skip_clean :all
+  option "with-fulldocs", "Install full documentation locally"
+
+  devel do
+    url 'http://www.apache.org/dyn/closer.cgi?path=tomcat/tomcat-8/v8.0.0-RC5/bin/apache-tomcat-8.0.0-RC5.tar.gz'
+    sha1 '17d310f962f0ce2de3956b122f5c604d97a87565'
+
+    resource 'fulldocs' do
+      url 'http://www.apache.org/dyn/closer.cgi?path=/tomcat/tomcat-8/v8.0.0-RC5/bin/apache-tomcat-8.0.0-RC5-fulldocs.tar.gz'
+      version '8.0.0-RC5'
+      sha1 'aac41f5259a987f6f9b787d3c4d2096e30ae529a'
+    end
+  end
+
+  resource 'fulldocs' do
+    url 'http://www.apache.org/dyn/closer.cgi?path=/tomcat/tomcat-7/v7.0.47/bin/apache-tomcat-7.0.47-fulldocs.tar.gz'
+    version '7.0.47'
+    sha1 '31d26adb234c4b58a74ad717aaf83b39f67e8ea3'
+  end
+
+  # Keep log folders
+  skip_clean 'libexec'
 
   def install
     # Remove Windows scripts
@@ -14,9 +34,8 @@ class Tomcat < Formula
     # Install files
     prefix.install %w{ NOTICE LICENSE RELEASE-NOTES RUNNING.txt }
     libexec.install Dir['*']
+    bin.install_symlink "#{libexec}/bin/catalina.sh" => "catalina"
 
-    # Symlink binaries
-    bin.mkpath
-    ln_s "#{libexec}/bin/catalina.sh", bin+"catalina"
+    (share/'fulldocs').install resource('fulldocs') if build.with? 'fulldocs'
   end
 end

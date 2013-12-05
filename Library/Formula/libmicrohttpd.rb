@@ -1,10 +1,10 @@
 require 'formula'
 
 class Libmicrohttpd < Formula
-  url 'http://ftpmirror.gnu.org/libmicrohttpd/libmicrohttpd-0.9.15.tar.gz'
-  mirror 'http://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-0.9.15.tar.gz'
   homepage 'http://www.gnu.org/software/libmicrohttpd/'
-  md5 'fb726a48095cc6b25c245dbc27ea76b0'
+  url 'http://ftpmirror.gnu.org/libmicrohttpd/libmicrohttpd-0.9.31.tar.gz'
+  mirror 'http://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-0.9.31.tar.gz'
+  sha1 '45d79b0ae25a7fa40dbae90a4195fed9d52f5041'
 
   def install
     system "./configure", "--prefix=#{prefix}", "--disable-dependency-tracking"

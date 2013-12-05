@@ -1,12 +1,16 @@
 require 'formula'
 
 class Md5deep < Formula
-  url 'http://downloads.sourceforge.net/project/md5deep/md5deep/md5deep-4.0.0/md5deep-4.0.0.tar.gz'
   homepage 'http://md5deep.sourceforge.net/'
-  md5 'fc3c0afbcf72861a5a42c699e804d6d4'
+  url 'http://downloads.sourceforge.net/project/md5deep/md5deep/md5deep-4.3/md5deep-4.3.tar.gz'
+  sha1 'b9dd6444f07c9fc344ebef201baebdf71bda337f'
 
   def install
     system "./configure", "--prefix=#{prefix}"
     system "make install"
+  end
+
+  def test
+    system("#{bin}/md5deep -h") && system("#{bin}/hashdeep -h")
   end
 end
